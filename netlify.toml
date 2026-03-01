@@ -1,0 +1,3 @@
+[build]
+  command = "echo 'Deploying static files, but Python API is NOT supported natively by Netlify Functions'"
+  publish = "static"
