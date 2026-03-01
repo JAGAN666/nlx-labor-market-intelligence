@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workforce Graph Intelligence - Circular Map</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --bg: #09090b;
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f4f4f5;
+            --muted: #a1a1aa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+        }
+
+        #sidebar {
+            width: 400px;
+            background: rgba(24, 24, 27, 0.95);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            z-index: 10;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        #chart-area {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #18181b 0%, #09090b 100%);
+        }
+
+        #chart-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+        }
+
+        .instruction {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .instruction h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #8b5cf6;
+            margin-bottom: 8px;
+        }
+
+        .instruction ol {
+            padding-left: 20px;
+            color: #d4d4d8;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .instruction li {
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            margin-top: auto;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        #loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b5cf6;
+            font-size: 1.2rem;
+            font-weight: 600;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h1>Skill Ecosystems</h1>
+        <p>A structured, topographic map of the Colorado labor market. This visualization reveals how isolated skill
+            domains connect across industries.</p>
+
+        <div class="instruction">
+            <h3>How to Read This Map</h3>
+            <ol>
+                <li><b>The Ring:</b> The top 120 most important skills in the state are arranged in a massive circle.
+                </li>
+                <li><b>Colored Domains:</b> Skills are grouped into contiguous colored block "Ecosystems" based on how
+                    exclusively they correlate in job postings.</li>
+                <li><b>The Web:</b> The lines crossing the center show cross-industry requirements. Thicker lines equal
+                    tighter correlations.</li>
+                <li><b>Interaction:</b> Hover your mouse over any skill text to instantly highlight its specific network
+                    and fade the noise.</li>
+            </ol>
+        </div>
+
+        <a href="/" class="back-btn">← Return to Main Dashboard</a>
+    </div>
+
+    <div id="chart-area">
+        <div id="loader">Structuring Network...</div>
+        <div id="chart-container"></div>
+    </div>
+
+    <script>
+        const chartDom = document.getElementById('chart-container');
+        const myChart = echarts.init(chartDom, 'dark');
+
+        myChart.setOption({ backgroundColor: 'transparent' });
+
+        const colors = [
+            '#ef4444', '#3b82f6', '#10b981', '#f59e0b', 
+            '#8b5cf6', '#ec4899', '#06b6d4', '#eab308'
+        ];
+        
+        const clusterNames = [
+            'Core Business & Admin', 'IT & Software Dev', 'Healthcare & Clinical', 
+            'Engineering & Ops', 'Sales & Marketing', 'Service & Maintenance', 'Specialized', 'Other'
+        ];
+
+        async function init() {
+            try {
+                // Fetch top 120 nodes - perfectly readable on a ring
+                const res = await fetch('/api/wgi/graph?limit=120'); 
+                const gData = await res.json();
+                
+                document.getElementById('loader').style.display = 'none';
+
+                const categories = clusterNames.map(name => ({ name }));
+
+                // SORT the nodes by group so they form contiguous colored blocks on the circle!
+                gData.nodes.sort((a, b) => {
+                    if (a.group !== b.group) return a.group - b.group;
+                    return b.freq - a.freq;
+                });
+
+                const nodes = gData.nodes.map(n => ({
+                    id: String(n.id),
+                    name: n.name,
+                    value: n.freq,
+                    symbolSize: Math.max(6, Math.sqrt(n.freq) * 1.5), 
+                    category: n.group % clusterNames.length,
+                    itemStyle: { color: colors[n.group % colors.length] }
+                }));
+
+                const links = gData.links.map(l => ({
+                    source: String(l.source),
+                    target: String(l.target),
+                    value: l.weight,
+                    lineStyle: { 
+                        width: Math.max(0.5, Math.sqrt(Math.abs(l.weight))),
+                        opacity: 0.15, 
+                        curveness: 0.3 // smooth arc across the center
+                    }
+                }));
+
+                const option = {
+                    tooltip: {
+                        formatter: function (params) {
+                            if (params.dataType === 'node') {
+                                return `<div style="padding:4px">
+                                    <b style="color:${params.color}">${params.data.name}</b><br/>
+                                    Domain: ${clusterNames[params.data.category]}<br/>
+                                    Frequency: ${params.data.value.toLocaleString()} jobs
+                                </div>`;
+                            }
+                            return '';
+                        },
+                        backgroundColor: 'rgba(24, 24, 27, 0.95)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        textStyle: { color: '#fff', fontFamily: 'Space Grotesk' }
+                    },
+                    legend: [{
+                        data: categories.map(a => a.name),
+                        orient: 'horizontal', // Put legend at bottom or let it wrap intuitively
+                        bottom: '20px',
+                        left: 'center',
+                        textStyle: { color: '#a1a1aa', fontFamily: 'Space Grotesk' }
+                    }],
+                    series: [
+                        {
+                            name: 'Skill Ecosystems',
+                            type: 'graph',
+                            layout: 'circular', // ✨ PERFECT STRUCTURE ✨
+                            circular: {
+                                rotateLabel: true // Labels point outward like a starburst
+                            },
+                            nodes: nodes,
+                            links: links,
+                            categories: categories,
+                            roam: true, 
+                            label: {
+                                show: true, // Permanent labels, rotated outward
+                                position: 'right',
+                                formatter: '{b}',
+                                fontSize: 11,
+                                color: '#d4d4d8',
+                                fontFamily: 'Space Grotesk'
+                            },
+                            emphasis: {
+                                focus: 'adjacency', // Highlight paths!
+                                label: {
+                                    fontSize: 14,
+                                    color: '#fff',
+                                    fontWeight: 'bold'
+                                },
+                                lineStyle: {
+                                    width: 4,
+                                    opacity: 0.8
+                                }
+                            }
+                        }
+                    ]
+                };
+
+                myChart.setOption(option);
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loader').innerText = 'Failed to construct map.';
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

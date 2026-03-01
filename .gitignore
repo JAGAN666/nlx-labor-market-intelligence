@@ -1,0 +1,11 @@
+*.csv
+*.pkl
+*.npy
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+env/
+.idea/
+.vscode/
