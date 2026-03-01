@@ -2,7 +2,9 @@
 
 An advanced labor market intelligence dashboard and workforce graph analyzer tailored for the state of Colorado. This tool processes raw job postings to extract critical skills, builds a complex skill co-occurrence graph, and provides interactive visualizations for workforce ecosystems, gatekeeper skills, and career mobility.
 
-![Dashboard Overview]([static/index.html](https://nlx-labor-market-intelligence.vercel.app/wgi)) <!-- Replace with actual screenshot path if available -->
+🔥 **Live Dashboard: [https://nlx-labor-market.vercel.app/wgi](https://nlx-labor-market.vercel.app/wgi)**
+
+![Dashboard Overview](static/index.html) <!-- Replace with actual screenshot path if available -->
 
 ---
 
