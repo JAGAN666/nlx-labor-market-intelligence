@@ -4,7 +4,7 @@ An advanced labor market intelligence dashboard and workforce graph analyzer tai
 
 🔥 **Live Dashboard: [https://nlx-labor-market.vercel.app/wgi](https://nlx-labor-market.vercel.app/wgi)**
 
-![Dashboard Overview](static/index.html) <!-- Replace with actual screenshot path if available -->
+
 
 ---
 
